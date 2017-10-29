@@ -1,0 +1,136 @@
+import sqlite3
+from sqlite3 import Error
+from pylab import *
+import matplotlib as mpl
+from mpl_toolkits.mplot3d import Axes3D
+
+db_name = './project3db.db'
+ONE_DAY = 24*3600
+
+def create_connection(db_file):
+    """ create a database connection to a SQLite database """
+    try:
+        conn = sqlite3.connect(db_file)
+        print(sqlite3.version)
+        
+        return conn
+        
+    except Error as e:
+        print(e)
+
+def get_planets_db(conn,planets):
+    
+    c = conn.cursor()
+    
+    for planet in planets:
+        c.execute('''SELECT * FROM planets
+                  WHERE planetId = {}'''.format(planet))
+        arr = c.fetchall()
+        name,mass,x,y,z,vx,vy,vz = arr[0][1:]
+        #print name,mass,x,y,z,vx,vy,vz
+        solver(name,float(mass),float(x),float(y),float(z),float(vx),float(vy),float(vz))
+        #return name,float(mass),float(x),float(y),float(z),float(vx),float(vy),float(vz)
+        
+def planetplot(x,y,z,color,tle,n):
+    
+    '''
+    fig = figure(1)
+    ax = fig.gca(projection='3d')
+    ax.plot(x, y, z)
+    '''
+    figure(n)
+    plot(x,y,color)
+    title(tle)
+    xlabel = ('x in m')
+    ylabel = ('y in m')
+    grid(True)
+    filename = tle.join('.png')
+    print tle
+    savefig(filename)
+    
+def solver(name,mass,x0,y0,z0,vx0,vy0,vz0):
+
+    if name == 'Sun':
+        x0,y0,z0,vx0,vy0,vz0 = 0,0,0,0,0,0
+        color = 'oy'
+        #print 'sun'
+    
+    else:
+        color = ''
+    
+    #Init vars
+    G = 6.673E-11
+    M = 1.98855E+30
+    t0 = 0.0
+    
+    AU = 149597871000   #m
+    day = 24*60*60      #s
+
+    n = int(10E3)
+    dt = (372*24*60*60)/(n)
+    
+    
+    
+    #Making arrays
+    x = zeros(n)
+    y = zeros(n)
+    z = zeros(n)
+    
+    vx = zeros(n)
+    vy = zeros(n)
+    vz = zeros(n)
+    
+    t = zeros(n)
+    
+    x[0] = x0*AU
+    y[0] = y0*AU
+    z[0] = z0*AU
+    
+    vx[0] = vx0*(AU/day)
+    vy[0] = vy0*(AU/day)
+    vz[0] = vz0*(AU/day)
+    
+    
+    #Process for Euler's method
+    for i in range(n-1):
+        x[i+1] = x[i] + vx[i]*dt
+        y[i+1] = y[i] + vy[i]*dt
+        z[i+1] = z[i] + vz[i]*dt
+        r = sqrt((x[i]**2) + (y[i]**2) + (z[i]**2))
+        a = -((G*M)/r**3)
+        vx[i+1] = vx[i] + (a*x[i])*dt
+        vy[i+1] = vy[i] + (a*y[i])*dt
+        vz[i+1] = vz[i] + (a*z[i])*dt
+        t[i+1] = t[i] + dt
+    
+    title = 'Eulers method'
+    planetplot(x,y,z,color,title,1)
+    
+    #Process for Verlet method
+    if name == 'Sun':
+        x.fill(0)
+        y.fill(0)
+        z.fill(0)
+    else:
+        for i in range(n-1):
+            r = sqrt((x[i]**2) + (y[i]**2) + (z[i]**2))
+            a = -((G*M)/r**3)
+            
+            x[i+1] = x[i] + vx[i]*dt + (dt**2/2.)*a*x[i]
+            y[i+1] = y[i] + vy[i]*dt + (dt**2/2.)*a*y[i]
+            z[i+1] = z[i] + vz[i]*dt + (dt**2/2.)*a*z[i]
+            r = sqrt((x[i]**2) + (y[i]**2) + (z[i]**2))
+            a = -((G*M)/r**3)
+            vx[i+1] = vx[i] + (dt/2.)*(a*x[i+1] + a*x[i])
+            vy[i+1] = vy[i] + (dt/2.)*(a*y[i+1] + a*y[i])
+            vz[i+1] = vz[i] + (dt/2.)*(a*z[i+1] + a*z[i])
+    
+    title = 'Verlet method'
+    
+    planetplot(x,y,z,color,title,2)
+    
+
+get_planets_db(create_connection(db_name),planets=[10,399])
+
+show()
+    
