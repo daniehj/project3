@@ -11,7 +11,7 @@ def create_connection(db_file):
     """ create a database connection to a SQLite database """
     try:
         conn = sqlite3.connect(db_file)
-        print(sqlite3.version)
+        print 'Connection to DB OK, SQLite version:',sqlite3.version
         
         return conn
         
@@ -27,33 +27,37 @@ def get_planets_db(conn,planets):
                   WHERE planetId = {}'''.format(planet))
         arr = c.fetchall()
         name,mass,x,y,z,vx,vy,vz = arr[0][1:]
-        #print name,mass,x,y,z,vx,vy,vz
         solver(name,float(mass),float(x),float(y),float(z),float(vx),float(vy),float(vz))
-        #return name,float(mass),float(x),float(y),float(z),float(vx),float(vy),float(vz)
+
         
 def planetplot(x,y,z,color,tle,n):
     
-    '''
-    fig = figure(1)
-    ax = fig.gca(projection='3d')
-    ax.plot(x, y, z)
-    '''
+    print 'Plotting...'
+    
     figure(n)
     plot(x,y,color)
     title(tle)
-    xlabel = ('x in m')
-    ylabel = ('y in m')
+    xlabel('x in m')
+    ylabel('y in m')
+    legend(['Sun','Earth'],)
     grid(True)
-    filename = tle.join('.png')
-    print tle
+    filename = str(tle + '.png')
+    
     savefig(filename)
     
+    #Change to this for 3d plot
+    '''
+    fig = figure(1)
+    ax = fig.gca(projection='3d')
+    ax.plot(body.x_pos,body.y_pos,body.z_pos)
+    filename = str(tle + '3d.png')
+    savefig(filename)
+    '''
 def solver(name,mass,x0,y0,z0,vx0,vy0,vz0):
 
     if name == 'Sun':
         x0,y0,z0,vx0,vy0,vz0 = 0,0,0,0,0,0
         color = 'oy'
-        #print 'sun'
     
     else:
         color = ''
@@ -96,11 +100,12 @@ def solver(name,mass,x0,y0,z0,vx0,vy0,vz0):
         x[i+1] = x[i] + vx[i]*dt
         y[i+1] = y[i] + vy[i]*dt
         z[i+1] = z[i] + vz[i]*dt
-        r = sqrt((x[i]**2) + (y[i]**2) + (z[i]**2))
-        a = -((G*M)/r**3)
-        vx[i+1] = vx[i] + (a*x[i])*dt
-        vy[i+1] = vy[i] + (a*y[i])*dt
-        vz[i+1] = vz[i] + (a*z[i])*dt
+        r = [x[i],y[i],z[i]]
+        dr = sqrt((x[i]**2) + (y[i]**2) + (z[i]**2))
+        a = -((G*M)*(r/dr**3))
+        vx[i+1] = vx[i] + a[0]*dt
+        vy[i+1] = vy[i] + a[1]*dt
+        vz[i+1] = vz[i] + a[2]*dt
         t[i+1] = t[i] + dt
     
     title = 'Eulers method'
@@ -113,17 +118,19 @@ def solver(name,mass,x0,y0,z0,vx0,vy0,vz0):
         z.fill(0)
     else:
         for i in range(n-1):
-            r = sqrt((x[i]**2) + (y[i]**2) + (z[i]**2))
-            a = -((G*M)/r**3)
+            r = [x[i],y[i],z[i]]
+            dr = sqrt((x[i]**2) + (y[i]**2) + (z[i]**2))
+            a = -((G*M)*(r/dr**3))
             
-            x[i+1] = x[i] + vx[i]*dt + (dt**2/2.)*a*x[i]
-            y[i+1] = y[i] + vy[i]*dt + (dt**2/2.)*a*y[i]
-            z[i+1] = z[i] + vz[i]*dt + (dt**2/2.)*a*z[i]
-            r = sqrt((x[i]**2) + (y[i]**2) + (z[i]**2))
-            a = -((G*M)/r**3)
-            vx[i+1] = vx[i] + (dt/2.)*(a*x[i+1] + a*x[i])
-            vy[i+1] = vy[i] + (dt/2.)*(a*y[i+1] + a*y[i])
-            vz[i+1] = vz[i] + (dt/2.)*(a*z[i+1] + a*z[i])
+            x[i+1] = x[i] + vx[i]*dt + (dt**2/2.)*a[0]
+            y[i+1] = y[i] + vy[i]*dt + (dt**2/2.)*a[1]
+            z[i+1] = z[i] + vz[i]*dt + (dt**2/2.)*a[2]
+            r = [x[i],y[i],z[i]]
+            dr = sqrt((x[i]**2) + (y[i]**2) + (z[i]**2))
+            a_new = -((G*M)*(r/dr**3))
+            vx[i+1] = vx[i] + (dt/2.)*(a_new[0] + a[0])
+            vy[i+1] = vy[i] + (dt/2.)*(a_new[1] + a[1])
+            vz[i+1] = vz[i] + (dt/2.)*(a_new[2] + a[2])
     
     title = 'Verlet method'
     
